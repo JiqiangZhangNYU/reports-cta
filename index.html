@@ -126,6 +126,10 @@ html, body { height: 100%; margin: 0; padding: 0;
 #strat-summary th { background: #f2f5f8; font-weight: 600; }
 #strat-summary code { background: #f0f2f5; padding: 1px 5px; border-radius: 3px; font-size: 11.5px; font-family: monospace; }
 #strat-summary blockquote { border-left: 3px solid #c0d0e0; margin: 0; padding-left: 12px; color: #666; }
+#strat-summary ul { padding-left: 20px; }
+#strat-summary li { margin-bottom: 4px; }
+.math-block { background: #f6f8fb; border: 1px solid #e0e8f0; border-radius: 6px; padding: 10px 16px; margin: 10px 0; font-family: 'Cambria Math', 'Latin Modern Math', serif; font-size: 14px; overflow-x: auto; white-space: pre-wrap; color: #2a3a4a; }
+.math-inline { font-family: 'Cambria Math', 'Latin Modern Math', serif; font-style: italic; color: #2a4a6a; background: #f0f4f8; padding: 1px 4px; border-radius: 3px; }
 
 /* ── Loading state ── */
 .loading { display: flex; align-items: center; justify-content: center;
@@ -314,16 +318,28 @@ function drawChart(id, hoverCol, highlightIdx) {
     const val = yMin + (yMax - yMin) * (1 - i / yTicks);
     ctx.fillText(val.toFixed(2), PAD.left - 4, PAD.top + plotH * i / yTicks + 4);
   }
-  // x-axis labels
+  // x-axis labels — show years for long series (>3yr), month-day for short
   ctx.fillStyle = '#888'; ctx.textAlign = 'center';
-  const xStep = Math.max(1, Math.floor(N / 7));
-  for (let i = 0; i < N; i += xStep) {
-    ctx.save(); ctx.translate(xOf(i), H - PAD.bottom + 14); ctx.rotate(-0.4);
-    ctx.fillText(dates[i].slice(5), 0, 0); ctx.restore();
+  const spanYears = N > 0 ? (new Date(dates[N-1]) - new Date(dates[0])) / (365.25*86400000) : 0;
+  if (spanYears > 3) {
+    // year-based ticks: one label per Jan-1
+    let lastYear = null;
+    for (let i = 0; i < N; i++) {
+      const yr = dates[i].slice(0, 4);
+      if (yr !== lastYear) {
+        lastYear = yr;
+        ctx.fillText(yr, xOf(i), H - PAD.bottom + 16);
+      }
+    }
+  } else {
+    const xStep = Math.max(1, Math.floor(N / 7));
+    for (let i = 0; i < N; i += xStep) {
+      ctx.save(); ctx.translate(xOf(i), H - PAD.bottom + 14); ctx.rotate(-0.4);
+      ctx.fillText(dates[i].slice(5), 0, 0); ctx.restore();
+    }
+    ctx.save(); ctx.translate(xOf(N - 1), H - PAD.bottom + 14); ctx.rotate(-0.4);
+    ctx.fillText(dates[N - 1].slice(5), 0, 0); ctx.restore();
   }
-  // last date
-  ctx.save(); ctx.translate(xOf(N - 1), H - PAD.bottom + 14); ctx.rotate(-0.4);
-  ctx.fillText(dates[N - 1].slice(5), 0, 0); ctx.restore();
 
   // crosshair + dots
   if (hoverCol != null && hoverCol >= 0 && hoverCol < N) {
@@ -561,6 +577,8 @@ async function buildStratDetail(key) {
     ['年化收益',   s.ann_ret  != null ? s.ann_ret + '%'        : '–'],
     ['年化波动',   s.ann_vol  != null ? s.ann_vol + '%'        : '–'],
     ['最大回撤',   s.max_dd   != null ? s.max_dd.toFixed(3)   : '–'],
+    ['日胜率',    s.win_rate != null ? s.win_rate + '%'       : '–'],
+    ['换手率',    s.turnover != null ? s.turnover + '%'       : '–'],
     ['NAV 终值',  s.final_nav != null ? s.final_nav.toFixed(2) : '–'],
   ];
   statsEl.innerHTML = items.map(([label, val]) =>
@@ -588,18 +606,45 @@ async function buildStratDetail(key) {
   }
 }
 
-// ── Minimal markdown renderer (no external deps) ─────────────────────────────
+// ── Markdown renderer with LaTeX + table support ──────────────────────────────
 function mdToHtml(md) {
+  // 1. Convert markdown tables to HTML tables
+  md = md.replace(/((?:^\|.+\|\n)+)/gm, function(block) {
+    const rows = block.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return block;
+    // Check if 2nd row is separator (|---|---|)
+    const isSep = /^\|[\s:|-]+\|$/.test(rows[1].trim());
+    const dataRows = isSep ? [rows[0], ...rows.slice(2)] : rows;
+    let html = '<table>';
+    dataRows.forEach((row, ri) => {
+      const cells = row.split('|').filter((c, i, a) => i > 0 && i < a.length - 1);
+      const tag = (ri === 0 && isSep) ? 'th' : 'td';
+      html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+    });
+    return html + '</table>';
+  });
+
+  // 2. Escape HTML (but preserve already-converted tables)
+  md = md.replace(/<(\/?(?:table|tr|th|td)>)/g, '\x00$1');  // protect table tags
+  md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  md = md.replace(/\x00/g, '<');  // restore table tags
+
+  // 3. LaTeX: $$ block → <div class="math-block">, $ inline → <span class="math-inline">
+  md = md.replace(/\$\$([\s\S]*?)\$\$/g, '<div class="math-block">$1</div>');
+  md = md.replace(/\$([^$\n]+?)\$/g, '<span class="math-inline">$1</span>');
+
+  // 4. Standard markdown
   return md
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
     .replace(/\n{2,}/g, '</p><p>')
-    .replace(/^(?!<[h1-6bcp])(.+)$/gm, '$1')
+    .replace(/^(?!<[h1-6bctdulp])(.+)$/gm, '$1')
     .replace(/^/m, '<p>') + '</p>';
 }
 
