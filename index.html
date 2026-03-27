@@ -2,6 +2,8 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>因子库 OOS 展示</title>
 <style>
@@ -629,12 +631,22 @@ async function buildStratDetail(key) {
 function mdToHtml(md) {
   // 1. Extract LaTeX BEFORE html-escaping (backslashes would be mangled)
   const latexBlocks = [];
+  function renderTex(tex, displayMode) {
+    if (typeof katex !== 'undefined') {
+      try { return katex.renderToString(tex.trim(), { displayMode, throwOnError: false }); }
+      catch(e) { /* fallback below */ }
+    }
+    // Fallback: styled raw LaTeX
+    const tag = displayMode ? 'div' : 'span';
+    const cls = displayMode ? 'math-block' : 'math-inline';
+    return `<${tag} class="${cls}">${tex.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</${tag}>`;
+  }
   md = md.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
-    latexBlocks.push('<div class="math-block">' + tex.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>');
+    latexBlocks.push(renderTex(tex, true));
     return '\x01L' + (latexBlocks.length - 1) + '\x01';
   });
   md = md.replace(/\$([^$\n]+?)\$/g, (_, tex) => {
-    latexBlocks.push('<span class="math-inline">' + tex.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>');
+    latexBlocks.push(renderTex(tex, false));
     return '\x01L' + (latexBlocks.length - 1) + '\x01';
   });
 
@@ -697,7 +709,11 @@ function filterSummary(md) {
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-init().catch(e => console.error('init failed:', e));
+// Wait for KaTeX to load before init (it has defer attribute)
+function startApp() { init().catch(e => console.error('init failed:', e)); }
+if (typeof katex !== 'undefined') startApp();
+else document.querySelector('script[src*="katex"]'
+  ).addEventListener('load', startApp);
 </script>
 </body>
 </html>
