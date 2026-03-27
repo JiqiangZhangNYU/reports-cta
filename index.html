@@ -608,32 +608,41 @@ async function buildStratDetail(key) {
 
 // ── Markdown renderer with LaTeX + table support ──────────────────────────────
 function mdToHtml(md) {
-  // 1. Convert markdown tables to HTML tables
-  md = md.replace(/((?:^\|.+\|\n)+)/gm, function(block) {
+  // 1. Extract LaTeX BEFORE html-escaping (backslashes would be mangled)
+  const latexBlocks = [];
+  md = md.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
+    latexBlocks.push('<div class="math-block">' + tex.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>');
+    return '\x01L' + (latexBlocks.length - 1) + '\x01';
+  });
+  md = md.replace(/\$([^$\n]+?)\$/g, (_, tex) => {
+    latexBlocks.push('<span class="math-inline">' + tex.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>');
+    return '\x01L' + (latexBlocks.length - 1) + '\x01';
+  });
+
+  // 2. Convert markdown tables to HTML tables
+  md = md.replace(/((?:^\|.+\|[ \t]*\n?)+)/gm, function(block) {
     const rows = block.trim().split('\n').filter(r => r.trim());
     if (rows.length < 2) return block;
-    // Check if 2nd row is separator (|---|---|)
-    const isSep = /^\|[\s:|-]+\|$/.test(rows[1].trim());
+    const isSep = /^[\s|:-]+$/.test(rows[1].replace(/[^|:\-\s]/g, ''));
     const dataRows = isSep ? [rows[0], ...rows.slice(2)] : rows;
     let html = '<table>';
     dataRows.forEach((row, ri) => {
-      const cells = row.split('|').filter((c, i, a) => i > 0 && i < a.length - 1);
+      const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|');
       const tag = (ri === 0 && isSep) ? 'th' : 'td';
       html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
     });
-    return html + '</table>';
+    return html + '</table>\n';
   });
 
-  // 2. Escape HTML (but preserve already-converted tables)
-  md = md.replace(/<(\/?(?:table|tr|th|td)>)/g, '\x00$1');  // protect table tags
+  // 3. Escape HTML (protect table tags + latex placeholders)
+  md = md.replace(/<(\/?(?:table|tr|th|td)>)/g, '\x02$1');
   md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  md = md.replace(/\x00/g, '<');  // restore table tags
+  md = md.replace(/\x02/g, '<');
 
-  // 3. LaTeX: $$ block → <div class="math-block">, $ inline → <span class="math-inline">
-  md = md.replace(/\$\$([\s\S]*?)\$\$/g, '<div class="math-block">$1</div>');
-  md = md.replace(/\$([^$\n]+?)\$/g, '<span class="math-inline">$1</span>');
+  // 4. Restore LaTeX
+  md = md.replace(/\x01L(\d+)\x01/g, (_, i) => latexBlocks[+i]);
 
-  // 4. Standard markdown
+  // 5. Standard markdown
   return md
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -649,7 +658,7 @@ function mdToHtml(md) {
 }
 
 function filterSummary(md) {
-  const KEEP = ['策略概述', '数学公式', '迭代记录'];
+  const KEEP = ['策略概述', '数学公式', '回测表现', '参数', '迭代记录', '适用说明'];
   const lines = md.split('\n');
   const out = [];
   let keep = true;
