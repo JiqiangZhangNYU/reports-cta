@@ -497,9 +497,9 @@ function buildCompChart(canvasId, period, d) {
       data: d.factors[f.key] || [],
       _sharpe: ps[f.key] ?? -999,
     }))
-    .sort((a, b) => b._sharpe - a._sharpe);
   const ewLabel = d.ew_sharpe != null ? `(${d.ew_sharpe.toFixed(2)}) 等权组合` : '等权组合';
-  series.push({ name: ewLabel, key: '__ew__', color: EW_COLOR, data: d.equal_weight, _sharpe: -9999 });
+  series.push({ name: ewLabel, key: '__ew__', color: EW_COLOR, data: d.equal_weight, _sharpe: d.ew_sharpe ?? -999 });
+  series.sort((a, b) => b._sharpe - a._sharpe);
 
   chartState[canvasId] = {
     dates: d.dates, series, hidden: new Set(), paths: [],
