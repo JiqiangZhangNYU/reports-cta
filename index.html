@@ -488,13 +488,18 @@ async function buildComparisonCharts() {
 }
 
 function buildCompChart(canvasId, period, d) {
-  const series = metaFactors.map(f => ({
-    name: f.display_name,
-    key: f.key,
-    color: colorMap[f.key],
-    data: d.factors[f.key] || [],
-  }));
-  series.push({ name: '等权组合', key: '__ew__', color: EW_COLOR, data: d.equal_weight });
+  const ps = d.period_sharpe || {};
+  const series = metaFactors
+    .map(f => ({
+      name: f.display_name + (ps[f.key] != null ? ` (${ps[f.key].toFixed(2)})` : ''),
+      key: f.key,
+      color: colorMap[f.key],
+      data: d.factors[f.key] || [],
+      _sharpe: ps[f.key] ?? -999,
+    }))
+    .sort((a, b) => b._sharpe - a._sharpe);
+  const ewLabel = '等权组合' + (d.ew_sharpe != null ? ` (${d.ew_sharpe.toFixed(2)})` : '');
+  series.push({ name: ewLabel, key: '__ew__', color: EW_COLOR, data: d.equal_weight, _sharpe: -9999 });
 
   chartState[canvasId] = {
     dates: d.dates, series, hidden: new Set(), paths: [],
