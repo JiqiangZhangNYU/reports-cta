@@ -56,61 +56,65 @@ html, body { height: 100%; margin: 0; padding: 0;
 
 /* ── Comparison view ── */
 #charts-row {
-  flex: 1; overflow-y: auto; padding: 10px 16px 0; display: flex; flex-direction: column; gap: 8px;
+  flex: 1; overflow-y: auto; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 20px;
 }
-.chart-wrap { display: flex; flex-direction: column; height: 42vh; flex-shrink: 0; }
-.chart-wrap:first-child { border-bottom: 1px solid #e4e8ed; padding-bottom: 8px; }
+.chart-wrap {
+  display: flex; flex-direction: column; flex-shrink: 0;
+  background: #fff; border-radius: 12px; padding: 16px 20px 8px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
 .chart-period-label {
-  font-size: 12px; font-weight: 600; color: #5a7a9a;
-  text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; padding: 0 4px;
+  font-size: 14px; font-weight: 700; color: #3a5a7a;
+  letter-spacing: 0.3px; margin-bottom: 8px; padding: 0 4px;
 }
-.chart-canvas-wrap { flex: 1; min-height: 0; position: relative; }
-.chart-canvas { width: 100%; height: 100%; display: block; border-radius: 4px; cursor: crosshair; }
+.chart-canvas-wrap { height: 380px; min-height: 320px; position: relative; }
+.chart-canvas { width: 100%; height: 100%; display: block; border-radius: 8px; border: 1px solid #eee; cursor: crosshair; }
 
 /* tooltip */
 .chart-tooltip {
   position: absolute; pointer-events: none;
-  background: rgba(255,255,255,0.96); border: 1px solid #ccc; border-radius: 6px;
-  padding: 8px 12px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  z-index: 10; max-height: 50vh; overflow-y: auto; scrollbar-width: thin;
+  background: rgba(255,255,255,0.97); border: 1px solid #c0c8d0; border-radius: 8px;
+  padding: 10px 14px; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+  z-index: 10; max-height: 60vh; overflow-y: auto; scrollbar-width: thin;
+  min-width: 180px;
 }
-.chart-tooltip.pinned { pointer-events: auto; }
-.tt-date { font-weight: 700; margin-bottom: 4px; color: #333; }
-.tt-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; white-space: nowrap; }
-.tt-swatch { width: 10px; height: 3px; border-radius: 1px; flex-shrink: 0; }
-.tt-name { flex: 1; }
-.tt-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart-tooltip.pinned { pointer-events: auto; border-color: #4a9ede; }
+.tt-date { font-weight: 700; margin-bottom: 6px; color: #1a2a3a; font-size: 13px; }
+.tt-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; white-space: nowrap; }
+.tt-swatch { width: 12px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.tt-name { flex: 1; color: #444; }
+.tt-val { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a2a3a; }
 
 /* ── Legend ── */
 .chart-legend {
-  flex: 0 0 auto; padding: 5px 10px 7px;
-  display: flex; flex-wrap: wrap; gap: 4px;
-  border-top: 1px solid #e4e8ed; background: #fff; max-height: 80px; overflow-y: auto;
+  flex: 0 0 auto; padding: 8px 12px 10px;
+  display: flex; flex-wrap: wrap; gap: 6px 12px;
+  border-top: 1px solid #e8ecf0; max-height: 100px; overflow-y: auto;
 }
 .leg-item {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 9px 3px 7px; border-radius: 20px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 8px; border-radius: 20px; cursor: pointer;
   border: 1.5px solid transparent; transition: opacity 0.12s, border-color 0.12s;
-  opacity: 0.35; user-select: none; white-space: nowrap;
+  opacity: 0.4; user-select: none; white-space: nowrap;
 }
-.leg-item:hover { opacity: 0.85; }
-.leg-item.lit { opacity: 0.85; }
+.leg-item:hover { opacity: 0.9; }
+.leg-item.lit { opacity: 0.9; }
 .leg-item.sel { opacity: 1; font-weight: 600; }
-.leg-item.dim { opacity: 0.15; }
-.leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.leg-ew-line { width: 16px; height: 0; flex-shrink: 0; border-top: 2.5px dashed currentColor; }
-.leg-label { font-size: 11px; color: #333; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.leg-item.dim { opacity: 0.12; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.leg-ew-line { width: 20px; height: 0; flex-shrink: 0; border-top: 2.5px dashed currentColor; }
+.leg-label { font-size: 12px; color: #333; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Strategy detail ── */
-#view-strategy { padding: 0; background: #f8fafc; }
-#strat-top { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #e4e8ed; padding: 12px 20px 8px; }
-#strat-title { font-size: 15px; font-weight: 700; color: #1a2a3a; margin-bottom: 8px; }
-#strat-stats { display: flex; gap: 10px; flex-wrap: wrap; }
-.stat-card { background: #f4f7fb; border: 1px solid #dde3eb; border-radius: 8px; padding: 8px 14px; min-width: 88px; }
-.stat-label { font-size: 9.5px; font-weight: 700; color: #8aa; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
-.stat-value { font-size: 18px; font-weight: 700; color: #1e3a5a; font-variant-numeric: tabular-nums; }
-#strat-chart-wrap { flex: 0 0 38vh; background: #fff; padding: 8px 16px 4px; position: relative; }
-#strat-chart { width: 100%; height: 100%; display: block; cursor: crosshair; border-radius: 4px; }
+#view-strategy { padding: 0; background: #f4f6f9; }
+#strat-top { flex: 0 0 auto; background: #fff; border-bottom: 1px solid #e4e8ed; padding: 16px 24px 12px; }
+#strat-title { font-size: 17px; font-weight: 700; color: #1a2a3a; margin-bottom: 12px; }
+#strat-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-card { background: #f4f7fb; border: 1px solid #dde3eb; border-radius: 10px; padding: 10px 16px; min-width: 95px; }
+.stat-label { font-size: 10px; font-weight: 700; color: #7a9ab8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.stat-value { font-size: 20px; font-weight: 700; color: #1e3a5a; font-variant-numeric: tabular-nums; }
+#strat-chart-wrap { flex: 0 0 340px; background: #fff; padding: 12px 20px 8px; position: relative; border-bottom: 1px solid #e8ecf0; }
+#strat-chart { width: 100%; height: 100%; display: block; cursor: crosshair; border-radius: 8px; border: 1px solid #eee; }
 #strat-summary-wrap { flex: 1; overflow-y: auto; padding: 16px 24px 24px; }
 #strat-summary { font-size: 13px; line-height: 1.7; color: #333; max-width: 900px; }
 #strat-summary h1 { font-size: 16px; margin-top: 0; color: #1a2a3a; }
@@ -286,8 +290,8 @@ function drawChart(id, hoverCol, highlightIdx) {
     const isEW  = s.name === '等权组合';
     const isFade = highlightIdx != null && highlightIdx >= 0 && !isHL;
     ctx.strokeStyle = s.color;
-    ctx.lineWidth   = isHL ? 3.0 : (isEW ? 2.0 : 1.2);
-    ctx.globalAlpha = isFade ? 0.07 : (isEW ? 0.9 : 0.35);
+    ctx.lineWidth   = isHL ? 3.5 : (isEW ? 2.5 : 1.5);
+    ctx.globalAlpha = isFade ? 0.06 : (isEW ? 0.95 : 0.5);
     if (isEW) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
     const pts = [];
     ctx.beginPath();
@@ -329,7 +333,9 @@ function drawChart(id, hoverCol, highlightIdx) {
     series.forEach((s, si) => {
       if (hidden.has(si) || s.data[hoverCol] == null) return;
       ctx.fillStyle = s.color;
-      ctx.beginPath(); ctx.arc(hx, yOf(s.data[hoverCol]), 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(hx, yOf(s.data[hoverCol]), 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(hx, yOf(s.data[hoverCol]), 4.5, 0, Math.PI * 2); ctx.stroke();
     });
   }
 }
