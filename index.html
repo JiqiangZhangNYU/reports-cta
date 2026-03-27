@@ -565,11 +565,24 @@ function hexAlpha(hex, a) {
 }
 
 // ── Strategy detail ───────────────────────────────────────────────────────────
+let _stratResizeHandler = null;
 async function buildStratDetail(key) {
   const meta = metaFactors.find(f => f.key === key) || {};
-  document.getElementById('strat-title').textContent = meta.display_name || key;
 
-  // stats cards
+  // 1. Immediately clear old content + show loading
+  document.getElementById('strat-title').textContent = meta.display_name || key;
+  const canvas = document.getElementById('strat-chart');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+    canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  document.getElementById('strat-summary').innerHTML = '<div class="loading">加载中…</div>';
+  // Scroll back to top
+  document.getElementById('view-strategy').scrollTop = 0;
+
+  // 2. Stats cards (from meta, instant)
   const s = meta;
   const statsEl = document.getElementById('strat-stats');
   const items = [
@@ -585,7 +598,7 @@ async function buildStratDetail(key) {
     `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value">${val}</div></div>`
   ).join('');
 
-  // fetch + draw full nav
+  // 3. Fetch data then render chart + summary together
   try {
     const d = await fetchJSON(`data/${encodeURIComponent(key)}.json`);
     const color = colorMap[key] || '#4285f4';
@@ -595,14 +608,20 @@ async function buildStratDetail(key) {
       hidden: new Set(), paths: [],
     };
     drawChart('strat-chart', null);
-    window.addEventListener('resize', () => drawChart('strat-chart', null));
+    if (_stratResizeHandler) window.removeEventListener('resize', _stratResizeHandler);
+    _stratResizeHandler = () => drawChart('strat-chart', null);
+    window.addEventListener('resize', _stratResizeHandler);
     bindChartEvents('strat-chart', null);
 
-    // summary
+    // summary — render after a microtask so chart paints first
     const summaryEl = document.getElementById('strat-summary');
-    summaryEl.innerHTML = mdToHtml(filterSummary(d.summary || ''));
+    const rawMd = d.summary || '';
+    requestAnimationFrame(() => {
+      summaryEl.innerHTML = mdToHtml(filterSummary(rawMd));
+    });
   } catch(e) {
     console.error(e);
+    document.getElementById('strat-summary').innerHTML = '<div class="loading">加载失败</div>';
   }
 }
 
