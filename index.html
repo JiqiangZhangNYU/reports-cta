@@ -503,9 +503,9 @@ function buildCompChart(canvasId, period, d) {
     }))
   const ewLabel = d.ew_sharpe != null ? `(${d.ew_sharpe.toFixed(2)}) 等权组合` : '等权组合';
   series.push({ name: ewLabel, key: '__ew__', color: EW_COLOR, data: d.equal_weight, _sharpe: d.ew_sharpe ?? -999 });
-  if (d.sharpe_weight) {
-    const swLabel = d.sw_sharpe != null ? `(${d.sw_sharpe.toFixed(2)}) Sharpe加权` : 'Sharpe加权';
-    series.push({ name: swLabel, key: '__sw__', color: SW_COLOR, data: d.sharpe_weight, _sharpe: d.sw_sharpe ?? -999 });
+  if (d.type_weight) {
+    const swLabel = d.sw_sharpe != null ? `(${d.sw_sharpe.toFixed(2)}) 类型加权` : '类型加权';
+    series.push({ name: swLabel, key: '__sw__', color: SW_COLOR, data: d.type_weight, _sharpe: d.sw_sharpe ?? -999 });
   }
   series.sort((a, b) => b._sharpe - a._sharpe);
 
