@@ -539,18 +539,26 @@ function buildLegend(period) {
     el.appendChild(dot); el.appendChild(lbl);
 
     el.addEventListener('mouseenter', () => {
-      if (st.selSet.size > 0) return;
+      if (st.selSet.size > 0 && !st.selSet.has(si)) return;
       drawChart(canvasId, null, si);
       el.classList.add('lit');
-      wrap.querySelectorAll('.leg-item').forEach((e, i) => { if (i !== si) e.classList.add('dim'); });
+      wrap.querySelectorAll('.leg-item').forEach((e, i) => {
+        if (i !== si && (st.selSet.size === 0 || st.selSet.has(i))) e.classList.add('dim');
+      });
     });
     el.addEventListener('mouseleave', () => {
-      if (st.selSet.size > 0) return;
-      drawChart(canvasId, null, null);
+      if (st.selSet.size > 0 && !st.selSet.has(si)) return;
+      drawChart(canvasId, null, st.selSet.size === 1 ? [...st.selSet][0] : null);
       wrap.querySelectorAll('.leg-item').forEach(e => e.classList.remove('lit', 'dim'));
+      if (st.selSet.size > 0) refreshLegendSel(period);
     });
     el.addEventListener('click', () => {
       if (st.selSet.has(si)) st.selSet.delete(si); else st.selSet.add(si);
+      // Update hidden set: when selSet has items, hide everything not selected
+      st.hidden.clear();
+      if (st.selSet.size > 0) {
+        st.series.forEach((_, i) => { if (!st.selSet.has(i)) st.hidden.add(i); });
+      }
       refreshLegendSel(period);
       drawChart(canvasId, null, st.selSet.size === 1 ? [...st.selSet][0] : null);
     });
