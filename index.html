@@ -184,6 +184,7 @@ const PALETTE = [
   '#0288d1','#8e24aa',
 ];
 const EW_COLOR = '#c62828';
+const SW_COLOR = '#2e7d32';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let metaFactors = [];
@@ -209,6 +210,7 @@ async function init() {
   metaFactors = meta.factors;
   metaFactors.forEach((f, i) => { colorMap[f.key] = PALETTE[i % PALETTE.length]; });
   colorMap['__ew__'] = EW_COLOR;
+  colorMap['__sw__'] = SW_COLOR;
   buildSidebar();
   showView('comparison');
 }
@@ -294,11 +296,13 @@ function drawChart(id, hoverCol, highlightIdx) {
   series.forEach((s, si) => {
     if (hidden.has(si)) { st.paths.push(null); return; }
     const isHL  = (highlightIdx === si);
-    const isEW  = s.name === '等权组合';
+    const isEW  = s.key === '__ew__';
+    const isSW  = s.key === '__sw__';
+    const isComposite = isEW || isSW;
     const isFade = highlightIdx != null && highlightIdx >= 0 && !isHL;
     ctx.strokeStyle = s.color;
-    ctx.lineWidth   = isHL ? 3.5 : (isEW ? 2.5 : 1.5);
-    ctx.globalAlpha = isFade ? 0.06 : (isEW ? 0.95 : 0.5);
+    ctx.lineWidth   = isHL ? 3.5 : (isComposite ? 2.5 : 1.5);
+    ctx.globalAlpha = isFade ? 0.06 : (isComposite ? 0.95 : 0.5);
     if (isEW) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
     const pts = [];
     ctx.beginPath();
@@ -499,6 +503,10 @@ function buildCompChart(canvasId, period, d) {
     }))
   const ewLabel = d.ew_sharpe != null ? `(${d.ew_sharpe.toFixed(2)}) 等权组合` : '等权组合';
   series.push({ name: ewLabel, key: '__ew__', color: EW_COLOR, data: d.equal_weight, _sharpe: d.ew_sharpe ?? -999 });
+  if (d.sharpe_weight) {
+    const swLabel = d.sw_sharpe != null ? `(${d.sw_sharpe.toFixed(2)}) Sharpe加权` : 'Sharpe加权';
+    series.push({ name: swLabel, key: '__sw__', color: SW_COLOR, data: d.sharpe_weight, _sharpe: d.sw_sharpe ?? -999 });
+  }
   series.sort((a, b) => b._sharpe - a._sharpe);
 
   chartState[canvasId] = {
