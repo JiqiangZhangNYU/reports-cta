@@ -184,7 +184,8 @@ const PALETTE = [
   '#0288d1','#8e24aa',
 ];
 const EW_COLOR = '#c62828';
-const SW_COLOR = '#2e7d32';
+const SW_COLOR = '#1565c0';
+const TW_COLOR = '#2e7d32';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let metaFactors = [];
@@ -211,6 +212,7 @@ async function init() {
   metaFactors.forEach((f, i) => { colorMap[f.key] = PALETTE[i % PALETTE.length]; });
   colorMap['__ew__'] = EW_COLOR;
   colorMap['__sw__'] = SW_COLOR;
+  colorMap['__tw__'] = TW_COLOR;
   buildSidebar();
   showView('comparison');
 }
@@ -298,7 +300,8 @@ function drawChart(id, hoverCol, highlightIdx) {
     const isHL  = (highlightIdx === si);
     const isEW  = s.key === '__ew__';
     const isSW  = s.key === '__sw__';
-    const isComposite = isEW || isSW;
+    const isTW  = s.key === '__tw__';
+    const isComposite = isEW || isSW || isTW;
     const isFade = highlightIdx != null && highlightIdx >= 0 && !isHL;
     ctx.strokeStyle = s.color;
     ctx.lineWidth   = isHL ? 3.5 : (isComposite ? 2.5 : 1.5);
@@ -503,9 +506,13 @@ function buildCompChart(canvasId, period, d) {
     }))
   const ewLabel = d.ew_sharpe != null ? `(${d.ew_sharpe.toFixed(2)}) 等权组合` : '等权组合';
   series.push({ name: ewLabel, key: '__ew__', color: EW_COLOR, data: d.equal_weight, _sharpe: d.ew_sharpe ?? -999 });
+  if (d.sharpe_weight) {
+    const swLabel = d.sw_sharpe != null ? `(${d.sw_sharpe.toFixed(2)}) Sharpe加权` : 'Sharpe加权';
+    series.push({ name: swLabel, key: '__sw__', color: SW_COLOR, data: d.sharpe_weight, _sharpe: d.sw_sharpe ?? -999 });
+  }
   if (d.type_weight) {
-    const swLabel = d.sw_sharpe != null ? `(${d.sw_sharpe.toFixed(2)}) 类型加权` : '类型加权';
-    series.push({ name: swLabel, key: '__sw__', color: SW_COLOR, data: d.type_weight, _sharpe: d.sw_sharpe ?? -999 });
+    const twLabel = d.tw_sharpe != null ? `(${d.tw_sharpe.toFixed(2)}) 类型加权` : '类型加权';
+    series.push({ name: twLabel, key: '__tw__', color: TW_COLOR, data: d.type_weight, _sharpe: d.tw_sharpe ?? -999 });
   }
   series.sort((a, b) => b._sharpe - a._sharpe);
 
