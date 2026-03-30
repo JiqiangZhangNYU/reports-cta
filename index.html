@@ -306,7 +306,7 @@ function drawChart(id, hoverCol, highlightIdx) {
     ctx.strokeStyle = s.color;
     ctx.lineWidth   = isHL ? 3.5 : (isComposite ? 2.5 : 1.5);
     ctx.globalAlpha = isFade ? 0.06 : (isComposite ? 0.95 : 0.5);
-    if (isEW) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
+    if (isComposite) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
     const pts = [];
     ctx.beginPath();
     let started = false;
@@ -514,7 +514,13 @@ function buildCompChart(canvasId, period, d) {
     const twLabel = d.tw_sharpe != null ? `(${d.tw_sharpe.toFixed(2)}) 类型加权` : '类型加权';
     series.push({ name: twLabel, key: '__tw__', color: TW_COLOR, data: d.type_weight, _sharpe: d.tw_sharpe ?? -999 });
   }
-  series.sort((a, b) => b._sharpe - a._sharpe);
+  // Sort: composites first (fixed order), then individual factors by Sharpe
+  const compositeKeys = new Set(['__ew__', '__sw__', '__tw__']);
+  const composites = series.filter(s => compositeKeys.has(s.key));
+  const individuals = series.filter(s => !compositeKeys.has(s.key));
+  individuals.sort((a, b) => b._sharpe - a._sharpe);
+  series.length = 0;
+  series.push(...composites, ...individuals);
 
   chartState[canvasId] = {
     dates: d.dates, series, hidden: new Set(), paths: [],
