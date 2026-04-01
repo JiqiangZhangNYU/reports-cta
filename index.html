@@ -128,6 +128,8 @@ html, body { height: 100%; margin: 0; padding: 0;
 #strat-summary th { background: #f2f5f8; font-weight: 600; }
 #strat-summary code { background: #f0f2f5; padding: 1px 5px; border-radius: 3px; font-size: 11.5px; font-family: monospace; }
 #strat-summary blockquote { border-left: 3px solid #c0d0e0; margin: 0; padding-left: 12px; color: #666; }
+#strat-summary pre { background: #f4f6f9; border: 1px solid #dde3ea; border-radius: 6px; padding: 12px 16px; overflow-x: auto; margin: 8px 0; }
+#strat-summary pre code { background: none; padding: 0; font-size: 12px; line-height: 1.5; }
 #strat-summary ul { padding-left: 20px; }
 #strat-summary li { margin-bottom: 4px; }
 .math-block { background: #f6f8fb; border: 1px solid #e0e8f0; border-radius: 6px; padding: 10px 16px; margin: 10px 0; font-family: 'Cambria Math', 'Latin Modern Math', serif; font-size: 14px; overflow-x: auto; white-space: pre-wrap; color: #2a3a4a; }
@@ -196,7 +198,7 @@ const chartSel = { '6m': new Set(), '2y': new Set() };
 const dataCache = {};
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
-const BUILD_VER = '1775036540';
+const BUILD_VER = '1775036768';
 async function fetchJSON(url) {
   if (dataCache[url]) return dataCache[url];
   const sep = url.includes('?') ? '&' : '?';
@@ -686,7 +688,15 @@ function mdToHtml(md) {
     return '\x01L' + (latexBlocks.length - 1) + '\x01';
   });
 
-  // 2. Convert markdown tables to HTML tables
+  // 2. Fenced code blocks → extract before escaping
+  const codeBlocks = [];
+  md = md.replace(/^```(\w*)\n([\s\S]*?)^```$/gm, (_, lang, code) => {
+    const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    codeBlocks.push('<pre><code>' + escaped + '</code></pre>');
+    return '\x03C' + (codeBlocks.length - 1) + '\x03';
+  });
+
+  // 3. Convert markdown tables to HTML tables
   md = md.replace(/((?:^\|.+\|[ \t]*\n?)+)/gm, function(block) {
     const rows = block.trim().split('\n').filter(r => r.trim());
     if (rows.length < 2) return block;
@@ -706,8 +716,9 @@ function mdToHtml(md) {
   md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   md = md.replace(/\x02/g, '<');
 
-  // 4. Restore LaTeX
+  // 4. Restore LaTeX and code blocks
   md = md.replace(/\x01L(\d+)\x01/g, (_, i) => latexBlocks[+i]);
+  md = md.replace(/\x03C(\d+)\x03/g, (_, i) => codeBlocks[+i]);
 
   // 5. Standard markdown
   return md
@@ -731,8 +742,8 @@ function filterSummary(md) {
   let keep = true;
   let inCode = false;
   for (const line of lines) {
-    if (/^```/.test(line)) { inCode = !inCode; continue; }
-    if (inCode) continue;
+    if (/^```/.test(line)) { inCode = !inCode; if (keep) out.push(line); continue; }
+    if (inCode) { if (keep) out.push(line); continue; }
     if (/^# (?!#)/.test(line))          { out.push(line); keep = true; }
     else if (/^[*][*]Sharpe/.test(line)) { out.push(line); }
     else if (/^## /.test(line)) {
