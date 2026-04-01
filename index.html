@@ -196,9 +196,11 @@ const chartSel = { '6m': new Set(), '2y': new Set() };
 const dataCache = {};
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
+const BUILD_VER = '1775036540';
 async function fetchJSON(url) {
   if (dataCache[url]) return dataCache[url];
-  const r = await fetch(url);
+  const sep = url.includes('?') ? '&' : '?';
+  const r = await fetch(url + sep + 'v=' + BUILD_VER);
   if (!r.ok) throw new Error(`fetch ${url} → ${r.status}`);
   const d = await r.json();
   dataCache[url] = d;
