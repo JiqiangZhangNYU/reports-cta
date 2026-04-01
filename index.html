@@ -123,7 +123,8 @@ html, body { height: 100%; margin: 0; padding: 0;
 #strat-summary h1 { font-size: 16px; margin-top: 0; color: #1a2a3a; }
 #strat-summary h2 { font-size: 14px; color: #2a4a6a; border-bottom: 1px solid #e0e8f0; padding-bottom: 4px; margin-top: 20px; }
 #strat-summary h3 { font-size: 13px; color: #3a5a7a; }
-#strat-summary table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 8px 0; }
+.table-wrap { overflow-x: auto; margin: 8px 0; }
+#strat-summary table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
 #strat-summary th, #strat-summary td { border: 1px solid #dde; padding: 5px 9px; }
 #strat-summary th { background: #f2f5f8; font-weight: 600; }
 #strat-summary code { background: #f0f2f5; padding: 1px 5px; border-radius: 3px; font-size: 11.5px; font-family: monospace; }
@@ -198,7 +199,7 @@ const chartSel = { '6m': new Set(), '2y': new Set() };
 const dataCache = {};
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
-const BUILD_VER = '1775036986';
+const BUILD_VER = '1775040029';
 async function fetchJSON(url) {
   if (dataCache[url]) return dataCache[url];
   const sep = url.includes('?') ? '&' : '?';
@@ -696,43 +697,63 @@ function mdToHtml(md) {
     return '\x03C' + (codeBlocks.length - 1) + '\x03';
   });
 
-  // 3. Convert markdown tables to HTML tables
+  // 3. Convert markdown tables to HTML tables (wrapped in scrollable div)
   md = md.replace(/((?:^\|.+\|[ \t]*\n?)+)/gm, function(block) {
     const rows = block.trim().split('\n').filter(r => r.trim());
     if (rows.length < 2) return block;
     const isSep = /^[\s|:-]+$/.test(rows[1].replace(/[^|:\-\s]/g, ''));
     const dataRows = isSep ? [rows[0], ...rows.slice(2)] : rows;
-    let html = '<table>';
+    let html = '<div class="table-wrap"><table>';
     dataRows.forEach((row, ri) => {
       const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|');
       const tag = (ri === 0 && isSep) ? 'th' : 'td';
       html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
     });
-    return html + '</table>\n';
+    return html + '</table></div>\n';
   });
 
-  // 3. Escape HTML (protect table tags + latex placeholders)
-  md = md.replace(/<(\/?(?:table|tr|th|td)>)/g, '\x02$1');
+  // 4. Escape HTML (protect table/div/pre tags + placeholders)
+  md = md.replace(/<(\/?(?:table|tr|th|td|div|pre|code)[ >])/g, '\x02$1');
+  md = md.replace(/<(\/(?:table|tr|th|td|div|pre|code)>)/g, '\x02$1');
+  md = md.replace(/(<div class="table-wrap">)/g, '\x02div class="table-wrap">');
   md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   md = md.replace(/\x02/g, '<');
 
-  // 4. Restore LaTeX and code blocks
+  // 5. Restore LaTeX and code blocks
   md = md.replace(/\x01L(\d+)\x01/g, (_, i) => latexBlocks[+i]);
   md = md.replace(/\x03C(\d+)\x03/g, (_, i) => codeBlocks[+i]);
 
-  // 5. Standard markdown
-  return md
+  // 6. Standard markdown → HTML (line by line to avoid <p> around block elements)
+  md = md
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/^(?!<[h1-6bctdulp])(.+)$/gm, '$1')
-    .replace(/^/m, '<p>') + '</p>';
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+  // 7. Wrap plain-text paragraphs in <p> (skip lines starting with HTML tags)
+  const lines = md.split('\n');
+  const result = [];
+  let pBuf = [];
+  function flushP() {
+    if (pBuf.length) { result.push('<p>' + pBuf.join(' ') + '</p>'); pBuf = []; }
+  }
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { flushP(); continue; }
+    if (/^<(?:h[1-6]|table|div|ul|li|blockquote|pre|\/)/.test(trimmed) ||
+        /^\x01|^\x03/.test(trimmed)) {
+      flushP();
+      result.push(trimmed);
+    } else {
+      pBuf.push(trimmed);
+    }
+  }
+  flushP();
+  return result.join('\n');
 }
 
 function filterSummary(md) {
