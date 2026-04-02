@@ -698,7 +698,8 @@ function mdToHtml(md) {
     return '\x03C' + (codeBlocks.length - 1) + '\x03';
   });
 
-  // 3. Convert markdown tables to HTML tables (wrapped in scrollable div)
+  // 3. Convert markdown tables to HTML tables (stash like code blocks to survive escaping)
+  const tableBlocks = [];
   md = md.replace(/((?:^\|.+\|[ \t]*\n?)+)/gm, function(block) {
     const rows = block.trim().split('\n').filter(r => r.trim());
     if (rows.length < 2) return block;
@@ -708,21 +709,23 @@ function mdToHtml(md) {
     dataRows.forEach((row, ri) => {
       const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|');
       const tag = (ri === 0 && isSep) ? 'th' : 'td';
-      html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+      html += '<tr>' + cells.map(c => {
+        const t = c.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return `<${tag}>${t}</${tag}>`;
+      }).join('') + '</tr>';
     });
-    return html + '</table></div>\n';
+    html += '</table></div>';
+    tableBlocks.push(html);
+    return '\x04T' + (tableBlocks.length - 1) + '\x04\n';
   });
 
-  // 4. Escape HTML (protect table/div/pre tags + placeholders)
-  md = md.replace(/<(\/?(?:table|tr|th|td|div|pre|code)[ >])/g, '\x02$1');
-  md = md.replace(/<(\/(?:table|tr|th|td|div|pre|code)>)/g, '\x02$1');
-  md = md.replace(/(<div class="table-wrap">)/g, '\x02div class="table-wrap">');
+  // 4. Escape HTML
   md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  md = md.replace(/\x02/g, '<');
 
-  // 5. Restore LaTeX and code blocks
+  // 5. Restore LaTeX, code blocks, and tables
   md = md.replace(/\x01L(\d+)\x01/g, (_, i) => latexBlocks[+i]);
   md = md.replace(/\x03C(\d+)\x03/g, (_, i) => codeBlocks[+i]);
+  md = md.replace(/\x04T(\d+)\x04/g, (_, i) => tableBlocks[+i]);
 
   // 6. Standard markdown → HTML (line by line to avoid <p> around block elements)
   md = md
@@ -746,7 +749,7 @@ function mdToHtml(md) {
     const trimmed = line.trim();
     if (!trimmed) { flushP(); continue; }
     if (/^<(?:h[1-6]|table|div|ul|li|blockquote|pre|\/)/.test(trimmed) ||
-        /^\x01|^\x03/.test(trimmed)) {
+        /^\x01|^\x03|^\x04/.test(trimmed)) {
       flushP();
       result.push(trimmed);
     } else {
