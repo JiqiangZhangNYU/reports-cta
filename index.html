@@ -200,7 +200,7 @@ const chartSel = { '6m': new Set(), '2y': new Set() };
 const dataCache = {};
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
-const BUILD_VER = '1775094945';
+const BUILD_VER = String(Date.now());
 async function fetchJSON(url) {
   if (dataCache[url]) return dataCache[url];
   const sep = url.includes('?') ? '&' : '?';
