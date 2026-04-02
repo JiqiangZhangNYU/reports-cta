@@ -134,6 +134,8 @@ html, body { height: 100%; margin: 0; padding: 0;
 #strat-summary ul { padding-left: 20px; margin: 6px 0; }
 #strat-summary li { margin-bottom: 4px; }
 #strat-summary strong { color: #1a2a3a; }
+.sh-neg { color: #d32f2f; font-weight: 600; }
+.sh-hi  { color: #2e7d32; font-weight: 600; }
 .math-block { background: #f6f8fb; border: 1px solid #e0e8f0; border-radius: 6px; padding: 10px 16px; margin: 10px 0; font-family: 'Cambria Math', 'Latin Modern Math', serif; font-size: 14px; overflow-x: auto; white-space: pre-wrap; color: #2a3a4a; }
 .math-inline { font-family: 'Cambria Math', 'Latin Modern Math', serif; font-style: italic; color: #2a4a6a; background: #f0f4f8; padding: 1px 4px; border-radius: 3px; display: inline; vertical-align: baseline; }
 
@@ -705,12 +707,28 @@ function mdToHtml(md) {
     if (rows.length < 2) return block;
     const isSep = /^[\s|:-]+$/.test(rows[1].replace(/[^|:\-\s]/g, ''));
     const dataRows = isSep ? [rows[0], ...rows.slice(2)] : rows;
+    // Detect table type from headers
+    const hdr = dataRows[0] || '';
+    const isYearlySharpe = /年份/.test(hdr) && /20[0-9]{2}/.test(hdr);
+    const isStatsTable = /指标/.test(hdr) && /值/.test(hdr);
     let html = '<div class="table-wrap"><table>';
     dataRows.forEach((row, ri) => {
       const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|');
       const tag = (ri === 0 && isSep) ? 'th' : 'td';
-      html += '<tr>' + cells.map(c => {
-        const t = c.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += '<tr>' + cells.map((c, ci) => {
+        let t = c.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if (tag === 'td') {
+          if (isYearlySharpe && ci > 0) {
+            const v = parseFloat(t);
+            if (!isNaN(v)) {
+              if (v < 0) t = `<span class="sh-neg">${t}</span>`;
+              else if (v >= 2) t = `<span class="sh-hi">${t}</span>`;
+            }
+          }
+          if (isStatsTable && ci === 1 && /Sharpe/.test(cells[0])) {
+            t = `<strong>${t}</strong>`;
+          }
+        }
         return `<${tag}>${t}</${tag}>`;
       }).join('') + '</tr>';
     });
@@ -770,6 +788,7 @@ function filterSummary(md) {
     if (/^```/.test(line)) { inCode = !inCode; continue; }
     if (inCode) continue;
     if (/^[*][*](来源|最优变体|样本内)/.test(line)) continue;
+    if (/^(关键发现|关键转折)[：:]/.test(line)) { out.push(line.replace(/^(关键发现|关键转折)[：:]\s*/, '**$1**: ')); continue; }
     if (/^# (?!#)/.test(line))          { out.push(line); keep = true; }
     else if (/^[*][*]Sharpe/.test(line)) { out.push(line); }
     else if (/^## /.test(line)) {
