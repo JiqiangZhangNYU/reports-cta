@@ -769,6 +769,7 @@ function filterSummary(md) {
   for (const line of lines) {
     if (/^```/.test(line)) { inCode = !inCode; continue; }
     if (inCode) continue;
+    if (/^[*][*](来源|最优变体|样本内)/.test(line)) continue;
     if (/^# (?!#)/.test(line))          { out.push(line); keep = true; }
     else if (/^[*][*]Sharpe/.test(line)) { out.push(line); }
     else if (/^## /.test(line)) {
