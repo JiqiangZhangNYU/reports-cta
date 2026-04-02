@@ -39,6 +39,12 @@ html, body { height: 100%; margin: 0; padding: 0;
 .nav-section { padding: 6px 16px 3px; font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.6px; color: #4a6a88; flex-shrink: 0; }
 
+.sort-btns { display: flex; gap: 2px; }
+.sort-btn { font-size: 9px; padding: 1px 6px; border-radius: 3px; cursor: pointer;
+  color: #6b89a8; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.sort-btn:hover { color: #a0c0e0; }
+.sort-btn.active { background: #2d4a64; color: #d6e8f8; font-weight: 600; }
+
 .strat-nav {
   padding: 7px 14px 7px 19px; cursor: pointer; font-size: 12px;
   border-left: 3px solid transparent;
@@ -156,7 +162,13 @@ html, body { height: 100%; margin: 0; padding: 0;
       <span>📊</span> 曲线对比
     </div>
     <div class="nav-divider"></div>
-    <div class="nav-section">各策略详情</div>
+    <div class="nav-section" style="display:flex;justify-content:space-between;align-items:center">
+      <span>各策略详情</span>
+      <span class="sort-btns">
+        <span class="sort-btn active" data-sort="sharpe" onclick="sortList('sharpe')">Sharpe</span>
+        <span class="sort-btn" data-sort="time" onclick="sortList('time')">时间</span>
+      </span>
+    </div>
     <div id="strat-nav-list"></div>
   </div>
 
@@ -225,11 +237,17 @@ async function init() {
   showView('comparison');
 }
 
+let currentSort = 'sharpe';
 function buildSidebar() {
+  const sorted = [...metaFactors];
+  if (currentSort === 'time') sorted.sort((a, b) => a.key.localeCompare(b.key));
+  else sorted.sort((a, b) => (b.sharpe ?? -999) - (a.sharpe ?? -999));
   const list = document.getElementById('strat-nav-list');
-  for (const f of metaFactors) {
+  list.innerHTML = '';
+  const activeKey = document.querySelector('.strat-nav.active')?.dataset?.key;
+  for (const f of sorted) {
     const el = document.createElement('div');
-    el.className = 'strat-nav';
+    el.className = 'strat-nav' + (f.key === activeKey ? ' active' : '');
     el.dataset.key = f.key;
     const sh = f.sharpe != null ? f.sharpe.toFixed(2) : '–';
     el.innerHTML = `<span class="sn-name" title="${f.display_name}">${f.display_name}</span>
@@ -237,6 +255,11 @@ function buildSidebar() {
     el.onclick = () => showView('strategy', f.key);
     list.appendChild(el);
   }
+}
+function sortList(mode) {
+  currentSort = mode;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === mode));
+  buildSidebar();
 }
 
 // ── View switching ────────────────────────────────────────────────────────────
