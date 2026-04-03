@@ -3,8 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>因子库 OOS 展示</title>
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').then(function(reg){
+  reg.addEventListener('updatefound',function(){var nw=reg.installing;
+    nw.addEventListener('statechange',function(){
+      if(nw.state==='activated'&&navigator.serviceWorker.controller)location.reload();
+    });
+  });
+}).catch(function(){});}
+</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0;
@@ -223,11 +233,21 @@ async function fetchJSON(url) {
   if (dataCache[url]) return dataCache[url];
   const hash = FILE_HASHES[url] || String(Date.now());
   const sep = url.includes('?') ? '&' : '?';
-  const r = await fetch(url + sep + 'v=' + hash);
-  if (!r.ok) throw new Error(`fetch ${url} → ${r.status}`);
-  const d = await r.json();
-  dataCache[url] = d;
-  return d;
+  const fullUrl = url + sep + 'v=' + hash;
+  for (let i = 0; i <= 2; i++) {
+    try {
+      const ac = new AbortController();
+      const tid = setTimeout(() => ac.abort(), 8000);
+      const r = await fetch(fullUrl, {signal: ac.signal});
+      clearTimeout(tid);
+      if (r.ok) { const d = await r.json(); dataCache[url] = d; return d; }
+      if (r.status === 404) throw new Error(`fetch ${url} → 404`);
+    } catch(e) {
+      if (e.name !== 'AbortError' && e.message.includes('404')) throw e;
+    }
+    if (i < 2) await new Promise(r => setTimeout(r, 500 * (i + 1)));
+  }
+  throw new Error(`fetch ${url} failed after retries`);
 }
 
 // ── Init (synchronous — data is inlined) ─────────────────────────────────────
