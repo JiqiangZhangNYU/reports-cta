@@ -1,5 +1,5 @@
 // Auto-generated — do not edit
-const CACHE = 'oos-vae626b3f';
+const CACHE = 'oos-v05c70508';
 const PRECACHE = ['./', './data/meta.json', './data/nav_6m.json', './data/nav_2y.json'];
 
 self.addEventListener('install', e => {
