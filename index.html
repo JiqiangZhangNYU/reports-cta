@@ -423,12 +423,13 @@ function drawChart(id, hoverCol, highlightIdx) {
     const isSW  = s.key === '__sw__';
     const isTW  = s.key === '__tw__';
     const isComposite = isEW || isSW || isTW;
+    const isExcess = s.key.endsWith('__lex') || s.key.endsWith('__sex');
     const isDetail = id === 'strat-chart';
     const isFade = highlightIdx != null && highlightIdx >= 0 && !isHL;
     ctx.strokeStyle = s.color;
     ctx.lineWidth   = isHL ? 3.5 : (isComposite ? 2.5 : (isDetail ? 2.0 : 1.5));
     ctx.globalAlpha = isFade ? 0.06 : (isComposite || isDetail ? 0.95 : 0.5);
-    if (isComposite) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
+    if (isComposite || isExcess) { ctx.setLineDash([6, 4]); } else { ctx.setLineDash([]); }
     const pts = [];
     ctx.beginPath();
     let started = false;
@@ -773,8 +774,7 @@ async function buildStratDetail(key) {
     statsEl.innerHTML = items.map(([label, val]) =>
       `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value">${val}</div></div>`
     ).join('');
-    const color = colorMap[key] || '#4285f4';
-    const series = [{ name: '多空净值', key, color, data: d.nav }];
+    const series = [{ name: '多空净值', key, color: '#1f4e79', data: d.nav }];
     if (d.nav_long_ex) series.push({ name: '多头超额', key: key + '__lex', color: '#d35400', data: d.nav_long_ex });
     if (d.nav_short_ex) series.push({ name: '空头超额', key: key + '__sex', color: '#1e8449', data: d.nav_short_ex });
     chartState['strat-chart'] = {
@@ -784,9 +784,13 @@ async function buildStratDetail(key) {
     };
     const legend = document.getElementById('strat-legend');
     if (legend) {
-      legend.innerHTML = series.map(s =>
-        `<div class="leg-item" style="color:${s.color}"><span class="leg-dot" style="background:${s.color}"></span><span class="leg-label">${s.name}</span></div>`
-      ).join('') + '<span style="color:#888;font-size:11px">三条线各自按样本内年化波动率 10% 缩放。超额已扣当天全市场等权。空头超额向上表示被空品种跑输市场。</span>';
+      legend.innerHTML = series.map(s => {
+        const dashed = s.key.endsWith('__lex') || s.key.endsWith('__sex');
+        const mark = dashed
+          ? '<span class="leg-ew-line"></span>'
+          : `<span class="leg-dot" style="background:${s.color}"></span>`;
+        return `<div class="leg-item" style="color:${s.color}">${mark}<span class="leg-label">${s.name}</span></div>`;
+      }).join('') + '<span style="color:#888;font-size:11px">三条线各自按样本内年化波动率 10% 缩放。超额已扣当天全市场等权。空头超额向上表示被空品种跑输市场。</span>';
     }
     drawChart('strat-chart', null);
     if (_stratResizeHandler) window.removeEventListener('resize', _stratResizeHandler);
