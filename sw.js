@@ -1,5 +1,5 @@
 // Auto-generated — do not edit
-const CACHE = 'oos-v3c452720-20261119';
+const CACHE = 'oos-v191a9cf1';
 const PRECACHE = ['./', './data/meta.json', './data/nav_6m.json', './data/nav_2y.json'];
 
 self.addEventListener('install', e => {
@@ -16,10 +16,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  if (e.request.mode === 'navigate' || e.request.url.endsWith('/sw.js')) {
-    e.respondWith(fetch(e.request, {cache: 'no-store'}));
-    return;
-  }
   e.respondWith(
     fetch(e.request).then(r => {
       if (r.ok) {
